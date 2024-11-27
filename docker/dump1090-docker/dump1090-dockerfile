@@ -1,0 +1,24 @@
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update
+RUN apt install wget cmake udev build-essential git make gcc pkg-config usbutils librtlsdr-dev sudo file init -y
+RUN \
+    useradd -rm -d /home/tester -s /bin/bash -g 100 -G sudo -u 1000 tester && \
+    groupadd -g 1000 tester && \
+    echo "tester ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee "/etc/sudoers.d/dont-prompt-tester-for-sudo-password"
+
+USER tester
+RUN mkdir -p /home/tester/foss
+
+RUN \
+cd /home/tester/foss && \
+git clone https://github.com/herrameise/sdrplay-api-linux-docker && \
+cd /home/tester/foss/sdrplay-api-linux-docker && sudo chmod +x ./install_lib_DOCKER.sh && ./install_lib_DOCKER.sh
+
+WORKDIR /home/tester/foss
+RUN git clone https://github.com/SDRplay/dump1090
+WORKDIR ./dump1090
+RUN SDRPLAY=1 make dump1090
+RUN sudo chmod +x ./dump1090
+RUN sudo mv ./dump1090 /bin/dump1090
+CMD ["dump1090", "--dev-sdrplay", "--net", "--net-bind-address", "0.0.0.0"]

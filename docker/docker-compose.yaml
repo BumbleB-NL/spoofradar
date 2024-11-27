@@ -1,0 +1,27 @@
+services:
+  dump1090:
+    build:
+      context: ./dump1090-docker
+      dockerfile: dump1090-dockerfile
+    privileged: true
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+      - /dev/shm:/dev/shm
+    restart: unless-stopped
+    networks:
+      radar-network:
+  spoofradar:
+    build:
+      context: ./spoofradar-docker
+      dockerfile: spoofradar-dockerfile
+    restart: unless-stopped
+    networks:
+      radar-network:
+    ports:
+    - 80:80
+    environment:
+    - DUMP1090_ENDPOINT=https://raw.githubusercontent.com/ANG13T/fly-catcher/refs/heads/main/notebook/samples/testing/sample.json
+    - TEST_MODE=true
+    
+networks:
+  radar-network:

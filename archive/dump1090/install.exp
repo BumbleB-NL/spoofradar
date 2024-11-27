@@ -1,0 +1,8 @@
+#!/usr/bin/expect
+spawn ./SDRplay_RSP_API-Linux-3.15.2.run
+expect "Press RETURN to view the license agreement" { send "\r"}
+expect "Press space to continue, 'q' to quit." { send "q\r" }
+# Add further interactions as needed
+expect "or press n and RETURN to exit the installer" { send "y\r" }
+expect "press n and RETURN to change them" { send "y\r"}
+expect eof

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spoofradar</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-ajax/dist/leaflet.ajax.min.js"></script>
+    <!-- Import Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Staatliches&display=swap" rel="stylesheet">
+    <style>
+        /* Global Styles */
+        html, body {
+            height: 100%; /* Ensure full height for the page */
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #2a2a2a; /* Dark mode gray background */
+            color: #e4e4e4; /* Light gray text for contrast */
+        }
+
+        h1 {
+            text-align: center;
+            background-color: #d32f2f; /* Red header */
+            color: white;
+            margin: 0;
+            padding: 15px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
+            font-family: 'Staatliches', sans-serif; /* Military-style font */
+            font-size: 36px; /* Larger font size for impact */
+            text-transform: uppercase; /* All caps for a bold military look */
+            letter-spacing: 2px; /* Spaced-out letters */
+        }
+
+        #map {
+            height: 80%; /* Adjust height to make the map smaller */
+            width: 90%; /* Limit the width to 90% of the page */
+            margin: 20px auto; /* Center the map with margin */
+            border: 3px solid #444; /* Subtle border for map container */
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Popup styles */
+        .leaflet-popup-content {
+            color: #e4e4e4; /* Light gray text */
+            font-size: 14px;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background-color: #333; /* Dark background */
+            border-radius: 5px;
+            border: 1px solid #555; /* Subtle border for visibility */
+        }
+
+        .leaflet-popup-tip {
+            background: #333; /* Match the popup background */
+        }
+
+        /* Add animation for marker updates */
+        .leaflet-marker-icon {
+            transition: transform 0.2s ease-in-out;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            #map {
+                height: 400px;
+                width: 100%; /* Ensure the map uses full width on small screens */
+            }
+        }
+
+        /* Ensuring the background remains dark behind the map */
+        .leaflet-container {
+            background-color: #2a2a2a; /* Dark background when zooming out */
+        }
+    </style>
+</head>
+<body>
+    <h1>Spoofradar</h1>
+
+    <!-- The div to hold the map -->
+    <div id="map"></div>
+
+    <!-- JavaScript to refresh only markers -->
+    <script>
+        var map = L.map('map').setView([51.5800, 5.1875], 3);  // Set initial center and zoom level
+
+        // Add OpenStreetMap tile layer with dark background
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Store markers in an array
+        var markers = [];
+
+        // Function to update marker positions
+        function updateMarkers() {
+            fetch('/get_aircraft_data')
+                .then(response => response.json())
+                .then(data => {
+                    // Remove all existing markers
+                    markers.forEach(marker => marker.remove());
+
+                    // Clear the marker array
+                    markers = [];
+
+                    // Loop through the aircraft data and place new markers
+                    data.forEach(aircraft => {
+                        var isSpoofed = aircraft.prediction > 0.5;  // Example logic based on prediction
+                        var color = isSpoofed ? 'red' : 'green';
+
+                        // Create a new marker for the aircraft
+                        var marker = L.circleMarker([aircraft.lat, aircraft.lon], {
+                            radius: 5,
+                            color: color,
+                            fillColor: color,
+                            fillOpacity: 0.7
+                        });
+
+                        // Attach hover event to show popup
+                        marker.on('mouseover', function (e) {
+                            marker.bindPopup('<b>Flight:</b> ' + aircraft.flight + '<br><b>Hex:</b> ' + aircraft.hex + '<br><b>Alt:</b> ' + aircraft.alt + '<br><b>Lon:</b> ' + aircraft.lon + '<br><b>Lat:</b> ' + aircraft.lat).openPopup();
+                        });
+
+                        // Attach hover event to hide popup
+                        marker.on('mouseout', function (e) {
+                            marker.closePopup();
+                        });
+
+                        // Add the marker to the map
+                        marker.addTo(map);
+
+                        // Add the marker to the array
+                        markers.push(marker);
+                    });
+                });
+        }
+
+        // Initial update of markers
+        updateMarkers();
+
+        // Update markers every 5 seconds
+        setInterval(updateMarkers, 5000);
+    </script>
+</body>
+</html>
