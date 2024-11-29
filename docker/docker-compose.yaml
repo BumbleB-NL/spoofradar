@@ -22,6 +22,6 @@ services:
     environment:
     - DUMP1090_ENDPOINT=http://dump1090:8080/data/aircraft.json
     - TEST_MODE=false
-    - TEST_FILE="./samples/testing/sample_custom.json"
+    - TEST_FILE=./samples/testing/sample_custom.json
 networks:
   radar-network:
