@@ -7,8 +7,6 @@ services:
     volumes:
       - /dev/bus/usb:/dev/bus/usb
       - /dev/shm:/dev/shm
-    ports:
-      - 8080:8080
     restart: unless-stopped
     networks:
       radar-network:
@@ -22,8 +20,8 @@ services:
     ports:
     - 80:80
     environment:
-    - DUMP1090_ENDPOINT=http://10.66.2.110:8080/data/aircraft.json
-    - TEST_MODE=true
-
+    - DUMP1090_ENDPOINT=http://dump1090:8080/data/aircraft.json
+    - TEST_MODE=false
+    - TEST_FILE="./samples/testing/custom_sample.json"
 networks:
   radar-network:
