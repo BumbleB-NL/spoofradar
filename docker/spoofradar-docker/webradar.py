@@ -17,16 +17,19 @@ cached_predictions = []
 
 # Used for testing only
 def get_aircraft_data():
-    #selected_file = "./samples/testing/sample.json"
-    #selected_file = "./samples/testing/sample_incomplete.json"
-    selected_file = "./samples/testing/sample_custom.json"
+    # selected_file = "./samples/testing/sample.json"
+    # selected_file = "./samples/testing/sample_incomplete.json"
+    # selected_file = "./samples/testing/sample_custom.json"
+    # selected_file = "./samples/testing/dumpsample.json"
+    selected_file = os.getenv("TEST_FILE", "./samples/testing/sample_custom.json")
     with open(selected_file) as file:
         json_contents = json.load(file)
     return json_contents["aircraft"]
 
 # Function to fetch aircraft data from a web endpoint
 def get_aircraft_data_from_endpoint():
-    endpoint_url = os.getenv("DUMP1090_ENDPOINT", "http://dump1090/data/aircraft.json")
+    endpoint_url = os.getenv("DUMP1090_ENDPOINT", "http://dump1090:8080/data/aircraft.json")
+    print("Getting data from: " + endpoint_url)
     try:
         response = requests.get(endpoint_url)
         response.raise_for_status()  # Raise an error for bad responses (e.g., 404, 500)
@@ -39,24 +42,34 @@ def get_aircraft_data_from_endpoint():
 # Function to validate if a record has all necessary fields for the AI model
 def is_valid_record(record):
     required_fields = [
-        'alt_baro', 'gs', 'track', 'baro_rate',
+        'altitude', 'alt_baro', 'speed', 'gs', 'track', 'vert_rate', 'baro_rate',
         'lat', 'lon', 'seen_pos', 'messages', 'seen', 'rssi'
     ]
-    return all(field in record and record[field] is not None for field in required_fields)
+    return any(record.get(field) is not None for field in required_fields) and all(
+        field in record for field in ['lat', 'lon']
+    )
 
-def handle_alt_baro(alt_baro):
+def handle_alt_baro(alt_baro, altitude):
     if alt_baro == "ground":
+        return 0.0  # Return 0.0 if the alt_baro is marked as "ground"
+    if altitude == "ground":
         return 0.0
-    else:
-        return alt_baro
+    return alt_baro if alt_baro is not None else (altitude if altitude is not None else 0.0)
+
+
+def handle_baro_rate(vert_rate, baro_rate):
+    return vert_rate if vert_rate is not None else (baro_rate if baro_rate is not None else 0.0)
+
+def handle_speed(speed, gs):
+    return speed if speed is not None else (gs if gs is not None else 0.0)
 
 def predict_adsb_data(adsb_message):
     try:
         feature_vector = [
-            handle_alt_baro(adsb_message.get('alt_baro', 0)),
-            float(adsb_message.get('gs', 0)),
+            handle_alt_baro(adsb_message.get('alt_baro'), adsb_message.get('altitude')),
+            float(handle_speed(adsb_message.get('speed'), adsb_message.get('gs'))),
             float(adsb_message.get('track', 0)),
-            float(adsb_message.get('baro_rate', 0)),
+            float(handle_baro_rate(adsb_message.get('vert_rate'), adsb_message.get('baro_rate'))),
             float(adsb_message.get('lat', 0)),
             float(adsb_message.get('lon', 0)),
             float(adsb_message.get('seen_pos', 0)),
@@ -69,7 +82,6 @@ def predict_adsb_data(adsb_message):
         return None
 
     prediction = model.predict(np.array([feature_vector]), verbose=0)
-    #prediction = model.predict(np.array([feature_vector]))
     return prediction[0][0]
 
 # Background task to periodically update cached predictions
@@ -114,7 +126,7 @@ def update_predictions(interval=5):
 
             # Add the prediction to the data
             updated_data.append({
-                'alt': float(handle_alt_baro(aircraft_data['alt_baro'])),
+                'alt': float(handle_alt_baro(aircraft_data.get('alt_baro'), aircraft_data.get('altitude'))),
                 'lat': float(aircraft_data["lat"]),
                 'lon': float(aircraft_data["lon"]),
                 'flight': aircraft_data.get("flight", "Unknown"),

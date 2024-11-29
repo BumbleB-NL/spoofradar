@@ -7,6 +7,8 @@ services:
     volumes:
       - /dev/bus/usb:/dev/bus/usb
       - /dev/shm:/dev/shm
+    ports:
+      - 8080:8080
     restart: unless-stopped
     networks:
       radar-network:
@@ -20,8 +22,8 @@ services:
     ports:
     - 80:80
     environment:
-    - DUMP1090_ENDPOINT=https://raw.githubusercontent.com/ANG13T/fly-catcher/refs/heads/main/notebook/samples/testing/sample.json
+    - DUMP1090_ENDPOINT=http://10.66.2.110:8080/data/aircraft.json
     - TEST_MODE=true
-    
+
 networks:
   radar-network:
